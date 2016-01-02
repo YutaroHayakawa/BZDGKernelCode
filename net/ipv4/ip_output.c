@@ -940,9 +940,9 @@ bzdg_out:
 				goto error;
 
             if (sk->sk_user_data) {
-                skb->head = skb->head - exthdrlen - hh_len;
-                skb->data = skb->data - exthdrlen - hh_len;
-                skb->tail = skb->tail - exthdrlen - hh_len;
+                skb->head = skb->head - transhdrlen - fraglen - exthdrlen - hh_len - 15;
+                skb->data = skb->data - transhdrlen - fraglen - exthdrlen - hh_len - 15;
+                skb->tail = skb->tail - transhdrlen - fraglen - exthdrlen - hh_len - 15;
             }
 
 			/*
