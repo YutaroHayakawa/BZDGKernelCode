@@ -908,13 +908,13 @@ alloc_new_skb:
 			if (datalen == length + fraggap)
 				alloclen += rt->dst.trailer_len;
 
-            /* For BZDG */
-            if(sk->sk_user_data) {
-                getfrag = bzdg_getfrag;
-                skb = (struct sk_buff *)sk->sk_user_data;
-                skb_set_owner_w(skb, sk);
-                goto bzdg_out;
-            }
+        /* For BZDG */
+        if(sk->sk_user_data) {
+            getfrag = bzdg_getfrag;
+            skb = (struct sk_buff *)sk->sk_user_data;
+            skb_set_owner_w(skb, sk);
+            goto bzdg_out;
+        }
 
 			if (transhdrlen) {
 				skb = sock_alloc_send_skb(sk,
@@ -939,11 +939,11 @@ bzdg_out:
 			if (skb == NULL)
 				goto error;
 
-            if (sk->sk_user_data) {
-                skb->head = skb->head - transhdrlen - fraglen - exthdrlen - hh_len - 15;
-                skb->data = skb->data - transhdrlen - fraglen - exthdrlen - hh_len - 15;
-                skb->tail = skb->tail - transhdrlen - fraglen - exthdrlen - hh_len - 15;
-            }
+      if (sk->sk_user_data) {
+          skb->head = skb->head - fragheaderlen - exthdrlen - hh_len;
+          skb->data = skb->data - fragheaderlen - exthdrlen - hh_len;
+          skb_reset_tail_pointer(skb);
+      }
 
 			/*
 			 *	Fill in the control structures
