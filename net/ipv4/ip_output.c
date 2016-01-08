@@ -908,13 +908,14 @@ alloc_new_skb:
 			if (datalen == length + fraggap)
 				alloclen += rt->dst.trailer_len;
 
-        /* For BZDG */
-        if(sk->sk_user_data) {
-            getfrag = bzdg_getfrag;
-            skb = (struct sk_buff *)sk->sk_user_data;
-            skb_set_owner_w(skb, sk);
-            goto bzdg_out;
-        }
+      /* For BZDG */
+      if(sk->sk_user_data) {
+				getfrag = bzdg_getfrag;
+				printk("Entering to BZDG if statement\n");
+				skb = (struct sk_buff *)sk->sk_user_data;
+				skb_set_owner_w(skb, sk);
+				goto bzdg_skip_allocation;
+    	}
 
 			if (transhdrlen) {
 				skb = sock_alloc_send_skb(sk,
@@ -935,15 +936,21 @@ alloc_new_skb:
 					cork->tx_flags = 0;
 			}
 
-bzdg_out:
+bzdg_skip_allocation:
 			if (skb == NULL)
 				goto error;
 
-      if (sk->sk_user_data) {
-          skb->head = skb->head - fragheaderlen - exthdrlen - hh_len;
-          skb->data = skb->data - fragheaderlen - exthdrlen - hh_len;
-          skb_reset_tail_pointer(skb);
-      }
+			if (sk->sk_user_data) {
+				skb->ip_summed = csummode;
+				skb->csum = 0;
+				skb_shinfo(skb)->tx_flags = cork->tx_flags;
+				cork->tx_flags = 0;
+				skb_set_network_header(skb, exthdrlen);
+				skb->transport_header = (skb->network_header +
+							 fragheaderlen);
+				data = skb->data - transhdrlen;
+				goto bzdg_skip_reserve_and_put;
+			}
 
 			/*
 			 *	Fill in the control structures
@@ -971,7 +978,7 @@ bzdg_out:
 				data += fraggap;
 				pskb_trim_unique(skb_prev, maxfraglen);
 			}
-
+bzdg_skip_reserve_and_put:
 			copy = datalen - transhdrlen - fraggap;
 			if (copy > 0 && getfrag(from, data + transhdrlen, offset, copy, fraggap, skb) < 0) {
 				err = -EFAULT;
