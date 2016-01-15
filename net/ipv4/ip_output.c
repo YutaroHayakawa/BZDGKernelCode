@@ -911,10 +911,25 @@ alloc_new_skb:
       /* For BZDG */
       if(sk->sk_user_data) {
 				getfrag = bzdg_getfrag;
-				printk("Entering to BZDG if statement\n");
+				printk("getfrag switched\n");
+
 				skb = (struct sk_buff *)sk->sk_user_data;
 				skb_set_owner_w(skb, sk);
-				goto bzdg_skip_allocation;
+				skb->ip_summed = csummode;
+				skb->csum = 0;
+				skb_shinfo(skb)->tx_flags = cork->tx_flags;
+				cork->tx_flags = 0;
+
+        skb->data -= transhdrlen;
+        skb->data -= fragheaderlen - exthdrlen;
+				skb_set_network_header(skb, exthdrlen);
+				skb->transport_header = (skb->network_header +
+							 fragheaderlen);
+
+        /* BZDG doesn't allow ip fragment. So, break the loop anyway. */
+        length = 0;
+
+        goto bzdg_out;
     	}
 
 			if (transhdrlen) {
@@ -936,21 +951,8 @@ alloc_new_skb:
 					cork->tx_flags = 0;
 			}
 
-bzdg_skip_allocation:
 			if (skb == NULL)
 				goto error;
-
-			if (sk->sk_user_data) {
-				skb->ip_summed = csummode;
-				skb->csum = 0;
-				skb_shinfo(skb)->tx_flags = cork->tx_flags;
-				cork->tx_flags = 0;
-				skb_set_network_header(skb, exthdrlen);
-				skb->transport_header = (skb->network_header +
-							 fragheaderlen);
-				data = skb->data - transhdrlen;
-				goto bzdg_skip_reserve_and_put;
-			}
 
 			/*
 			 *	Fill in the control structures
@@ -978,7 +980,6 @@ bzdg_skip_allocation:
 				data += fraggap;
 				pskb_trim_unique(skb_prev, maxfraglen);
 			}
-bzdg_skip_reserve_and_put:
 			copy = datalen - transhdrlen - fraggap;
 			if (copy > 0 && getfrag(from, data + transhdrlen, offset, copy, fraggap, skb) < 0) {
 				err = -EFAULT;
@@ -992,6 +993,7 @@ bzdg_skip_reserve_and_put:
 			exthdrlen = 0;
 			csummode = CHECKSUM_NONE;
 
+bzdg_out:
 			/*
 			 * Put the packet on the pending queue.
 			 */
