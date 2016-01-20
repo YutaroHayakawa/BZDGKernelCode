@@ -910,9 +910,10 @@ alloc_new_skb:
 
 			if (sk->sk_user_data) {
 				skb = (struct sk_buff *)sk->sk_user_data;
-				skb->len = fraglen + exthdrlen;
 				skb_push(skb, transhdrlen);
+        printk("head : %p\ndata : %p\ntail : %d\nend : %d\nlen: %d\n", skb->head, skb->data, skb->tail, skb->end, skb->len);
 				skb_push(skb, fragheaderlen);
+        printk("head : %p\ndata : %p\ntail : %d\nend : %d\nlen: %d\n", skb->head, skb->data, skb->tail, skb->end, skb->len);
 				skb->ip_summed = csummode;
 				skb->csum = 0;
 				skb_shinfo(skb)->tx_flags = cork->tx_flags;
@@ -920,6 +921,7 @@ alloc_new_skb:
 				skb->transport_header = (skb->network_header +
 						fragheaderlen);
 				skb_set_owner_w(skb, sk);
+				length = 0;
 				goto bzdg_out;
 			}
 
